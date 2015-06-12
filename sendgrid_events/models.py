@@ -1,9 +1,11 @@
+from __future__ import absolute_import
 import json
 
 from django.db import models
 from django.utils import timezone
 
 from jsonfield import JSONField
+from celery import shared_task
 
 from sendgrid_events.signals import batch_processed
 
@@ -25,3 +27,8 @@ class Event(models.Model):
             ))
         batch_processed.send(sender=Event, events=events)
         return events
+
+
+@shared_task
+def process_batch(data):
+    return Event.process_batch(data=data)
