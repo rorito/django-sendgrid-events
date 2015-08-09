@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import json
 
+from django.core import serializers
 from django.db import models
 from django.utils import timezone
 
@@ -17,7 +18,7 @@ class Event(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
 
     @classmethod
-    def process_batch(cls, data):
+    def process_batch(cls, data, json_compatible=False):
         events = []
         for event in json.loads(data):
             events.append(Event.objects.create(
@@ -25,10 +26,15 @@ class Event(models.Model):
                 email=event["email"],
                 data=event
             ))
+
         batch_processed.send(sender=Event, events=events)
+
+        if json_compatible:
+            return json.loads(serializers.serialize('json', events))
+
         return events
 
 
 @shared_task
-def process_batch(data):
-    return Event.process_batch(data=data)
+def process_batch(data, json_compatible=False):
+    return Event.process_batch(data=data, json_compatible=json_compatible)
