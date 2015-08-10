@@ -20,11 +20,19 @@ def handle_batch_post(request):
     if background_process:
         if queue:
             process_batch.apply_async(
-                kwargs={'data': request.body},
+                kwargs={
+                    'data': request.body,
+                    'json_compatible': True
+                },
                 queue=queue
             )
         else:
-            process_batch.apply_async(kwargs={'data': request.body})
+            process_batch.apply_async(
+                kwargs={
+                    'data': request.body,
+                    'json_compatible': True
+                }
+            )
 
     else:
         Event.process_batch(data=request.body)
