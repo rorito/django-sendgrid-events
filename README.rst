@@ -27,6 +27,25 @@ Documentation
 
 Documentation can be found online at http://django-sendgrid-events.rtfd.org.
 
+How to Use with Celery
+----------------------
+1. In the root of your project, create a sendgrid_event_hooks.py file
+https://gist.github.com/rorito/1f2add7742dcd3449021
+
+2. In settings.py (or equivalent), add:
+```SENDGRID_EVENT_HANDLER = 'tribute.sendgrid_event_hooks.CustomEventHandler'```
+
+3. Wherever you have integrated django-sendgrid-events processing in your app (for example in your tasks.py), add the following:
+```
+from django.core.serializers import serialize
+from sendgrid_events.models import Event
+
+@shared_task
+def process_sendgrid_events(data):
+    events = Event.process_batch(data=data)
+    return json.loads(serialize('json', events))
+```
+
 
 Commercial Support
 ------------------
