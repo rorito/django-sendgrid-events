@@ -1,39 +1,25 @@
 from django.conf import settings
 from django.http import HttpResponse
+from django.utils.module_loading import import_string
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from sendgrid_events.models import Event, process_batch
+from .handlers import AbstractEventHandler, DefaultEventHandler
 
 
 @require_POST
 @csrf_exempt
 def handle_batch_post(request):
     background_process = False
-    if hasattr(settings, 'SENDGRID_BACKGROUND_PROCESSING'):
-        background_process = settings.SENDGRID_BACKGROUND_PROCESSING
 
-    queue = None
-    if hasattr(settings, 'SENDGRID_BACKGROUND_QUEUE'):
-        queue = settings.SENDGRID_BACKGROUND_QUEUE
+    EventHandler = DefaultEventHandler
+    if hasattr(settings, 'SENDGRID_EVENT_HANDLER'):
+        CustomHandler = import_string(settings.SENDGRID_EVENT_HANDLER)
 
-    if background_process:
-        if queue:
-            process_batch.apply_async(
-                kwargs={
-                    'data': request.body,
-                    'json_compatible': True
-                },
-                queue=queue
-            )
-        else:
-            process_batch.apply_async(
-                kwargs={
-                    'data': request.body,
-                    'json_compatible': True
-                }
-            )
+        if issubclass(CustomHandler, AbstractEventHandler):
+            EventHandler = CustomHandler
 
-    else:
-        Event.process_batch(data=request.body)
+    handler = EventHandler()
+    handler.process_events(request.body)
+
     return HttpResponse()
