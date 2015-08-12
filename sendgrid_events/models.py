@@ -6,7 +6,6 @@ from django.db import models
 from django.utils import timezone
 
 from jsonfield import JSONField
-from celery import shared_task
 
 from sendgrid_events.signals import batch_processed
 
@@ -18,7 +17,7 @@ class Event(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
 
     @classmethod
-    def process_batch(cls, data, json_compatible=False):
+    def process_batch(cls, data):
         events = []
         for event in json.loads(data):
             events.append(Event.objects.create(
@@ -29,12 +28,4 @@ class Event(models.Model):
 
         batch_processed.send(sender=Event, events=events)
 
-        if json_compatible:
-            return json.loads(serializers.serialize('json', events))
-
         return events
-
-
-@shared_task
-def process_batch(data, json_compatible=False):
-    return Event.process_batch(data=data, json_compatible=json_compatible)
